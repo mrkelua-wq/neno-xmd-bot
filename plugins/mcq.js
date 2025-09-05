@@ -3,7 +3,7 @@ const axios = require("axios");
 const fs = require("fs");
 
 // Gemini API Key
-const GEMINI_API_KEY = "AIzaSyCac8QLbUN0KbcXYkTmT3ume3W5MC1yAoc";
+const GEMINI_API_KEY = "AIzaSyDHt6SL_5d7GisE40keJBtQCvrTapSUoR4";
 
 // Subjects mapping
 const subjects = {
