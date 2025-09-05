@@ -5,9 +5,9 @@ const moment = require('moment');
 
 cmd(
   {
-    pattern: "menu",
+    pattern: "menu2",
     alias: ["getmenu"],
-    react: "😏",
+    react: "🥵",
     desc: "Interactive menu with buttons",
     category: "main",
     filename: __filename,
