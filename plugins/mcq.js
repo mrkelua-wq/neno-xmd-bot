@@ -1,132 +1,88 @@
 const { cmd } = require("../command");
 const axios = require("axios");
 const fs = require("fs");
-const path = require("path");
 
-// ----------------- CONFIG (change if needed) -----------------
 const GEMINI_API_KEY = "AIzaSyC4chj4aorec4aX4UIO3STqEFXnsrJP6Cs";
 
-// Typical Imagen/Gemini image endpoint — if this doesn't work for your key/project,
-// replace with the exact endpoint from your Google Cloud/Vertex AI or Gemini docs.
-const ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict";
-// --------------------------------------------------------------
+const subjects = { "1": "Combined Maths", "2": "Physics", "3": "ICT", "4": "Chemistry", "5": "Biology", "6": "Other" };
+let activePolls = {}; // chatId: { question, options, answer, explanation, answeredUsers }
 
-// helper: try to save base64 image and return file path
-async function saveBase64Image(base64Str, chatId) {
-  const buf = Buffer.from(base64Str, "base64");
-  const fileName = `img_${chatId}_${Date.now()}.jpg`;
-  const filePath = path.join(__dirname, "..", "tmp", fileName);
-
-  // ensure tmp folder exists
-  const dir = path.dirname(filePath);
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-
-  fs.writeFileSync(filePath, buf);
-  return filePath;
-}
-
-// Main command: .img <prompt>
 cmd({
-  pattern: "imgg (.+)",
-  react: "🦚",
-  desc: "Generate an image from text prompt (Imagen / Gemini)",
-  category: "ai",
+  pattern: "mcq start (\\d+)",
+  react: "📚",
+  desc: "Start A/L MCQ poll",
+  category: "education",
   filename: __filename,
 }, async (bot, mek, m, { from, q, reply }) => {
   try {
-    if (!q) return reply("❓ Please provide a prompt. Example: `.img A cute puppy sitting on a sofa`");
+    const subjectNumber = q || mek.body.split(" ")[2];
+    const subject = subjects[subjectNumber];
+    if (!subject) return reply("❌ Unsupported subject.");
 
-    await reply("🖌️ Generating image... please wait.");
+    await reply("🤖 Generating MCQ...");
 
-    // Build request body — many Google image endpoints accept different payload shapes.
-    // This payload follows a common "predict" style; if your endpoint is different,
-    // change `payload` to match the docs for your model.
-    const payload = {
-      // Some endpoints expect `instances` or `input` or `prompt` — try the common shapes.
-      // Here we provide a few candidate top-level fields; only one may be used by the server.
-      prompt: q,
-      // fallback field many Vertex AI imagen examples use:
-      input: { text: q },
-      instances: [{ prompt: q }],
-      // For generativelanguage-style Imagen predict endpoints sometimes they accept:
-      // { "text": q } or nested JSON — adjust if needed.
-    };
+    const prompt = `
+Generate 1 multiple-choice question in Sinhala for A/L ${subject}.
+Include 4 options (A-D).
+Mark correct answer.
+Provide short explanation.
+Format: question|A|B|C|D|correct_option|explanation
+`;
 
-    // Make the request (we try to be tolerant of minor schema differences)
-    const headers = { "Content-Type": "application/json" };
+    const response = await axios.post(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+      { contents: [{ parts: [{ text: prompt }] }] },
+      { headers: { "Content-Type": "application/json" } }
+    );
 
-    // Use axios post
-    const response = await axios.post(`${ENDPOINT}?key=${GEMINI_API_KEY}`, payload, { headers, timeout: 60000 });
+    const data = response.data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+    if (!data) return reply("❌ Failed to generate MCQ.");
 
-    // --- Parse response: handle several possible formats ---
-    // 1) generativelanguage/imagen-style: response.data?.predictions[0]?.image
-    // 2) response.data?.predictions[0]?.content (base64)
-    // 3) response.data?.candidates[0]?.content?.[0]?.image?.imageBytes
-    // 4) response.data?.output[0]?.content (some APIs)
-    // 5) response.data?.images[0]?.b64_json
-    // Try common locations:
-    let b64;
-    try {
-      // common Vertex/Imagen style
-      if (response.data?.predictions?.[0]?.image) {
-        // maybe already binary? or object with b64
-        const img = response.data.predictions[0].image;
-        if (typeof img === "string") b64 = img;
-        else if (img?.imageBytes) b64 = img.imageBytes;
-        else if (img?.b64_json) b64 = img.b64_json;
-      }
+    const [question, A, B, C, D, correct, explanation] = data.split("|");
 
-      // generic 'output' style
-      if (!b64 && Array.isArray(response.data?.output)) {
-        for (const o of response.data.output) {
-          if (o?.image) { b64 = o.image; break; }
-          if (o?.content && typeof o.content === "string" && o.content.length > 100) {
-            // sometimes content is base64 directly
-            b64 = o.content; break;
-          }
-        }
-      }
+    activePolls[from] = { subject, question, options: { A, B, C, D }, answer: correct, explanation, answeredUsers: {} };
 
-      // generativelanguage "candidates" style
-      if (!b64 && response.data?.candidates?.[0]?.content?.[0]?.image?.imageBytes) {
-        b64 = response.data.candidates[0].content[0].image.imageBytes;
-      }
-
-      // some responses put base64 in .images array
-      if (!b64 && response.data?.images?.[0]?.b64_json) {
-        b64 = response.data.images[0].b64_json;
-      }
-
-      // fallback: sometimes the API returns data.data[0].b64 -> check deep
-      if (!b64) {
-        const jsonStr = JSON.stringify(response.data);
-        const match = jsonStr.match(/"([A-Za-z0-9+/=]{200,})"/);
-        if (match) b64 = match[1];
-      }
-    } catch (err) {
-      console.error("Parse image response error:", err);
-    }
-
-    if (!b64) {
-      console.error("Image response (raw):", JSON.stringify(response.data).slice(0, 2000));
-      return reply("❌ Image generation returned no image. Check your endpoint/key or try a different prompt.");
-    }
-
-    // Save base64 -> file
-    const filePath = await saveBase64Image(b64, from);
-
-    // Send image to chat (works with baileys style sendMessage)
-    const imageBuffer = fs.readFileSync(filePath);
-    await bot.sendMessage(from, { image: imageBuffer, caption: `🖼️ Here you go — prompt: ${q}` }, { quoted: mek });
-
-    // Optionally delete temp file after a short time
-    setTimeout(() => {
-      try { if (fs.existsSync(filePath)) fs.unlinkSync(filePath); } catch (e) {}
-    }, 30_000);
+    await bot.sendMessage(from, {
+      text: `📌 MCQ - ${subject}\n${question}\nA) ${A}\nB) ${B}\nC) ${C}\nD) ${D}\n\nReply A/B/C/D to answer.`
+    });
 
   } catch (err) {
-    console.error("Image gen error:", err?.response?.data || err.message || err);
-    const msg = err?.response?.data?.error?.message || err.message || "Unknown error during image generation.";
-    reply(`❌ Image generation failed:\n${msg}`);
+    console.error(err);
+    reply("❌ Error generating MCQ.");
   }
+});
+
+cmd({
+  pattern: "^(A|B|C|D)$",
+  react: "✏️",
+  desc: "Answer MCQ",
+  category: "education",
+  filename: __filename,
+}, async (bot, mek, m, { from }) => {
+  const poll = activePolls[from];
+  if (!poll) return;
+  const userAnswer = mek.body.trim().toUpperCase();
+  poll.answeredUsers[mek.sender] = userAnswer;
+
+  if (userAnswer === poll.answer) await bot.sendMessage(from, { text: `✅ Correct!\n💡 ${poll.explanation}` });
+  else await bot.sendMessage(from, { text: `❌ Wrong! Correct: ${poll.answer}\n💡 ${poll.explanation}` });
+});
+
+cmd({
+  pattern: "mcq stop",
+  react: "🛑",
+  desc: "Stop MCQ poll",
+  category: "education",
+  filename: __filename,
+}, async (bot, mek, m, { from, reply }) => {
+  const poll = activePolls[from];
+  if (!poll) return reply("❌ No active poll.");
+
+  const total = Object.keys(poll.answeredUsers).length;
+  const correct = Object.values(poll.answeredUsers).filter(a => a === poll.answer).length;
+  const accuracy = total === 0 ? 0 : ((correct / total) * 100).toFixed(2);
+
+  let resultMsg = `🛑 MCQ stopped!\nSubject: ${poll.subject}\nQuestion: ${poll.question}\nAnswer: ${poll.answer}\nTotal: ${total}\nCorrect: ${correct}\nAccuracy: ${accuracy}%`;
+  delete activePolls[from];
+  await bot.sendMessage(from, { text: resultMsg });
 });
