@@ -4,13 +4,13 @@ const moment = require("moment");
 
 // Node 18+ fetch default තියෙනවා
 // නැත්තම් npm install node-fetch
-// const fetch = require("node-fetch");
+const fetch = global.fetch || require("node-fetch");
 
 cmd(
   {
     pattern: "menu2",
-    alias: ["getmenu2"],
-    react: "🦚",
+    alias: ["getmenu"],
+    react: "🫡",
     desc: "Interactive menu with buttons and image",
     category: "main",
     filename: __filename,
@@ -26,9 +26,10 @@ cmd(
       // Send loading react
       await malvin.sendMessage(from, { react: { text: "⏳", key: m.key } });
 
-      // Fetch image buffer
+      // Fetch image buffer and convert to Buffer
       const res = await fetch(thumbUrl);
-      const thumb = await res.arrayBuffer();
+      const arrayBuffer = await res.arrayBuffer();
+      const thumb = Buffer.from(arrayBuffer); // convert to Buffer
 
       // Menu text
       let teks = `
@@ -49,7 +50,7 @@ cmd(
 
       // Interactive list message
       const listMessage = {
-        image: { buffer: thumb }, // image attach
+        image: { buffer: thumb }, // fixed Buffer
         caption: teks,
         footer: "Click a button to see commands!",
         title: "📜 MENU OPTIONS",
