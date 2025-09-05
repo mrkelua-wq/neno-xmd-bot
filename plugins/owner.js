@@ -1,6 +1,6 @@
 const { cmd } = require("../command");
 
-// 🔑 Check if sender can use command
+// 🔑 Check if sender can use command (bot number or admin)
 function canUseCommand(m, malvin, isAdmins) {
     const botNumber = malvin.user?.id?.split(":")[0] || "";
     const sender = m.sender || "";
@@ -90,7 +90,10 @@ cmd({
 }, async (malvin, mek, m, { from, isGroup, isAdmins, reply }) => {
     try {
         if (!isGroup) return reply("⚠️ Group only!");
-        if (!canUseCommand(m, malvin, isAdmins)) return reply("⚠️ Only bot or admins can use this command!");
+
+        const botNumber = malvin.user?.id?.split(":")[0] || "";
+        const sender = m.sender || "";
+        if (!(sender.includes(botNumber) || isAdmins)) return reply("⚠️ Only bot or admins can use this command!");
 
         const groupMetadata = await malvin.groupMetadata(from);
         const members = groupMetadata.participants;
@@ -104,6 +107,117 @@ cmd({
         reply(`❌ Error: ${e.message}`);
     }
 });
+
+// 🔇 MUTE
+cmd({
+    pattern: "mute",
+    react: "🔇",
+    alias: ["silence", "lock"],
+    desc: "Admin-only mode.",
+    category: "main",
+    filename: __filename
+}, async (malvin, mek, m, { from, isGroup, isAdmins, isBotAdmins, reply }) => {
+    try {
+        if (!isGroup) return reply("⚠️ Group only!");
+        if (!canUseCommand(m, malvin, isAdmins)) return reply("⚠️ Only bot or admins can use this command!");
+        if (!isBotAdmins) return reply("⚠️ Bot must be admin!");
+
+        await malvin.groupSettingUpdate(from, "announcement");
+        return reply("✅ Group muted. Only admins can chat.");
+    } catch (e) {
+        console.error("Mute Error:", e);
+        reply(`❌ Error: ${e.message}`);
+    }
+});
+
+// 🔊 UNMUTE
+cmd({
+    pattern: "unmute",
+    react: "🔊",
+    alias: ["unlock"],
+    desc: "Allow all members to chat.",
+    category: "main",
+    filename: __filename
+}, async (malvin, mek, m, { from, isGroup, isAdmins, isBotAdmins, reply }) => {
+    try {
+        if (!isGroup) return reply("⚠️ Group only!");
+        if (!canUseCommand(m, malvin, isAdmins)) return reply("⚠️ Only bot or admins can use this command!");
+        if (!isBotAdmins) return reply("⚠️ Bot must be admin!");
+
+        await malvin.groupSettingUpdate(from, "not_announcement");
+        return reply("✅ Group unmuted. Everyone can chat.");
+    } catch (e) {
+        console.error("Unmute Error:", e);
+        reply(`❌ Error: ${e.message}`);
+    }
+});
+
+// 🚪 LEAVE
+cmd({
+    pattern: "left",
+    react: "🚪",
+    alias: ["leave", "exit"],
+    desc: "Bot leaves group.",
+    category: "main",
+    filename: __filename
+}, async (malvin, mek, m, { from, isGroup, reply }) => {
+    try {
+        if (!isGroup) return reply("⚠️ Group only!");
+        const botNumber = malvin.user?.id?.split(":")[0] || "";
+        if (!m.sender.includes(botNumber)) return reply("⚠️ Only bot can use this command!");
+
+        await malvin.groupLeave(from);
+    } catch (e) {
+        console.error("Leave Error:", e);
+        reply(`❌ Error: ${e.message}`);
+    }
+});
+
+// ⬆️ PROMOTE
+cmd({
+    pattern: "promote",
+    react: "⬆️",
+    desc: "Promote a user to admin.",
+    category: "main",
+    filename: __filename
+}, async (malvin, mek, m, { from, isGroup, isAdmins, isBotAdmins, reply }) => {
+    try {
+        if (!isGroup) return reply("⚠️ Group only!");
+        if (!canUseCommand(m, malvin, isAdmins)) return reply("⚠️ Only bot or admins can use this command!");
+        if (!isBotAdmins) return reply("⚠️ Bot must be admin!");
+        if (!m.quoted) return reply("⚠️ Reply to the user to promote!");
+
+        const target = m.quoted.sender;
+        await malvin.groupParticipantsUpdate(from, [target], "promote");
+        return reply(`✅ Promoted: @${target.split('@')[0]}`);
+    } catch (e) {
+        console.error("Promote Error:", e);
+        reply(`❌ Error: ${e.message}`);
+    }
+});
+
+// ⬇️ DEMOTE
+cmd({
+    pattern: "demote",
+    react: "⬇️",
+    desc: "Demote an admin to member.",
+    category: "main",
+    filename: __filename
+}, async (malvin, mek, m, { from, isGroup, isAdmins, isBotAdmins, reply }) => {
+    try {
+        if (!isGroup) return reply("⚠️ Group only!");
+        if (!canUseCommand(m, malvin, isAdmins)) return reply("⚠️ Only bot or admins can use this command!");
+        if (!isBotAdmins) return reply("⚠️ Bot must be admin!");
+        if (!m.quoted) return reply("⚠️ Reply to the user to demote!");
+
+        const target = m.quoted.sender;
+        await malvin.groupParticipantsUpdate(from, [target], "demote");
+        return reply(`✅ Demoted: @${target.split('@')[0]}`);
+    } catch (e) {
+        console.error("Demote Error:", e);
+        reply(`❌ Error: ${e.message}`);
+    }
+});});
 
 // 🔇 MUTE
 cmd({
