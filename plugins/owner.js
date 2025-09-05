@@ -1,10 +1,10 @@
 const { cmd } = require("../command");
 
-// Helper: Owner or Bot itself
-function isSuperUser(m, malvin) {
+// 🔑 Check if sender can use command
+function canUseCommand(m, malvin, isAdmins) {
     const botNumber = malvin.user?.id?.split(":")[0] || "";
     const sender = m.sender || "";
-    return global.owner.includes(sender.split("@")[0]) || sender.includes(botNumber);
+    return sender.includes(botNumber) || isAdmins;
 }
 
 // 🛑 BLOCK
@@ -17,7 +17,7 @@ cmd({
     filename: __filename
 }, async (malvin, mek, m, { reply }) => {
     try {
-        if (!isSuperUser(m, malvin)) return reply("⚠️ Only the owner or bot can use this command!");
+        if (!canUseCommand(m, malvin, false)) return reply("⚠️ Only bot or admins can use this command!");
         if (!m.quoted) return reply("⚠️ Reply to the user you want to block!");
 
         const target = m.quoted.sender;
@@ -40,12 +40,11 @@ cmd({
 }, async (malvin, mek, m, { from, isGroup, isAdmins, isBotAdmins, reply }) => {
     try {
         if (!isGroup) return reply("⚠️ Group only!");
-        if (!isSuperUser(m, malvin) && !isAdmins) return reply("⚠️ Only admins can use this!");
+        if (!canUseCommand(m, malvin, isAdmins)) return reply("⚠️ Only bot or admins can use this command!");
         if (!isBotAdmins) return reply("⚠️ Bot must be admin!");
-
         if (!m.quoted) return reply("⚠️ Reply to the user you want to kick!");
-        const target = m.quoted.sender;
 
+        const target = m.quoted.sender;
         await malvin.groupParticipantsUpdate(from, [target], "remove");
         return reply(`✅ Kicked: @${target.split('@')[0]}`);
     } catch (e) {
@@ -64,7 +63,7 @@ cmd({
 }, async (malvin, mek, m, { from, isGroup, isAdmins, isBotAdmins, reply }) => {
     try {
         if (!isGroup) return reply("⚠️ Group only!");
-        if (!isSuperUser(m, malvin) && !isAdmins) return reply("⚠️ Only admins can use this!");
+        if (!canUseCommand(m, malvin, isAdmins)) return reply("⚠️ Only bot or admins can use this command!");
         if (!isBotAdmins) return reply("⚠️ Bot must be admin!");
 
         const groupMetadata = await malvin.groupMetadata(from);
@@ -91,7 +90,7 @@ cmd({
 }, async (malvin, mek, m, { from, isGroup, isAdmins, reply }) => {
     try {
         if (!isGroup) return reply("⚠️ Group only!");
-        if (!isSuperUser(m, malvin) && !isAdmins) return reply("⚠️ Only admins can use this!");
+        if (!canUseCommand(m, malvin, isAdmins)) return reply("⚠️ Only bot or admins can use this command!");
 
         const groupMetadata = await malvin.groupMetadata(from);
         const members = groupMetadata.participants;
@@ -117,7 +116,7 @@ cmd({
 }, async (malvin, mek, m, { from, isGroup, isAdmins, isBotAdmins, reply }) => {
     try {
         if (!isGroup) return reply("⚠️ Group only!");
-        if (!isSuperUser(m, malvin) && !isAdmins) return reply("⚠️ Only admins can mute!");
+        if (!canUseCommand(m, malvin, isAdmins)) return reply("⚠️ Only bot or admins can use this command!");
         if (!isBotAdmins) return reply("⚠️ Bot must be admin!");
 
         await malvin.groupSettingUpdate(from, "announcement");
@@ -139,7 +138,7 @@ cmd({
 }, async (malvin, mek, m, { from, isGroup, isAdmins, isBotAdmins, reply }) => {
     try {
         if (!isGroup) return reply("⚠️ Group only!");
-        if (!isSuperUser(m, malvin) && !isAdmins) return reply("⚠️ Only admins can unmute!");
+        if (!canUseCommand(m, malvin, isAdmins)) return reply("⚠️ Only bot or admins can use this command!");
         if (!isBotAdmins) return reply("⚠️ Bot must be admin!");
 
         await malvin.groupSettingUpdate(from, "not_announcement");
@@ -161,7 +160,7 @@ cmd({
 }, async (malvin, mek, m, { from, isGroup, reply }) => {
     try {
         if (!isGroup) return reply("⚠️ Group only!");
-        if (!isSuperUser(m, malvin)) return reply("⚠️ Only owner or bot can use this!");
+        if (!isBotSender(m, malvin)) return reply("⚠️ Only the bot can use this command!");
 
         await malvin.groupLeave(from);
     } catch (e) {
@@ -180,7 +179,7 @@ cmd({
 }, async (malvin, mek, m, { from, isGroup, isAdmins, isBotAdmins, reply }) => {
     try {
         if (!isGroup) return reply("⚠️ Group only!");
-        if (!isSuperUser(m, malvin) && !isAdmins) return reply("⚠️ Only admins can promote!");
+        if (!canUseCommand(m, malvin, isAdmins)) return reply("⚠️ Only bot or admins can use this command!");
         if (!isBotAdmins) return reply("⚠️ Bot must be admin!");
         if (!m.quoted) return reply("⚠️ Reply to the user to promote!");
 
@@ -203,7 +202,7 @@ cmd({
 }, async (malvin, mek, m, { from, isGroup, isAdmins, isBotAdmins, reply }) => {
     try {
         if (!isGroup) return reply("⚠️ Group only!");
-        if (!isSuperUser(m, malvin) && !isAdmins) return reply("⚠️ Only admins can demote!");
+        if (!canUseCommand(m, malvin, isAdmins)) return reply("⚠️ Only bot or admins can use this command!");
         if (!isBotAdmins) return reply("⚠️ Bot must be admin!");
         if (!m.quoted) return reply("⚠️ Reply to the user to demote!");
 
