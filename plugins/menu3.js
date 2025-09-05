@@ -1,16 +1,13 @@
 const { cmd } = require("../command");
 const os = require("os");
 const moment = require("moment");
-
-// Node 18+ fetch default තියෙනවා
-// නැත්තම් npm install node-fetch
-const fetch = global.fetch || require("node-fetch");
+const fetch = require("node-fetch");
 
 cmd(
   {
     pattern: "menu2",
     alias: ["getmenu"],
-    react: "🫡",
+    react: "♻️",
     desc: "Interactive menu with buttons and image",
     category: "main",
     filename: __filename,
@@ -23,13 +20,13 @@ cmd(
       const totalRam = (os.totalmem() / 1024 / 1024 / 1024).toFixed(2) + " GB";
       const thumbUrl = "https://files.catbox.moe/l0ixpu.jpg";
 
-      // Send loading react
+      // React loading
       await malvin.sendMessage(from, { react: { text: "⏳", key: m.key } });
 
-      // Fetch image buffer and convert to Buffer
+      // Fetch image as Buffer
       const res = await fetch(thumbUrl);
       const arrayBuffer = await res.arrayBuffer();
-      const thumb = Buffer.from(arrayBuffer); // convert to Buffer
+      const thumb = Buffer.from(arrayBuffer);
 
       // Menu text
       let teks = `
@@ -48,12 +45,21 @@ cmd(
 ⟦⚡⟧  *POWERED BY 𝗡𝗜𝗠𝗘𝗦𝗛𝗞𝗔 𝗠𝗜𝗛𝗜𝗥𝗔𝗡*  ⟦⚡⟧*
 `;
 
-      // Interactive list message
+      // Fix: send image separately
+      await malvin.sendMessage(
+        from,
+        {
+          image: thumb, // <- FIX: direct Buffer
+          caption: teks,
+        },
+        { quoted: mek }
+      );
+
+      // Add interactive list (without image, safer)
       const listMessage = {
-        image: { buffer: thumb }, // fixed Buffer
-        caption: teks,
-        footer: "Click a button to see commands!",
-        title: "📜 MENU OPTIONS",
+        text: "📜 Select a Menu Category",
+        footer: "NEON XMD BOT",
+        title: "Menu Options",
         buttonText: "View All Menu",
         sections: [
           {
@@ -89,7 +95,7 @@ cmd(
 
       await malvin.sendMessage(from, listMessage, { quoted: mek });
 
-      // Success react
+      // React success
       await malvin.sendMessage(from, { react: { text: "✅", key: m.key } });
     } catch (e) {
       console.error(e);
