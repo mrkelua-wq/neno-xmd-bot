@@ -1,110 +1,197 @@
-const { cmd } = require("../command");
+const { cmd } = require('../command');
 
-// 🔑 Check if sender can use command (bot number or admin)
-function canUseCommand(m, malvin, isAdmins) {
-    const botNumber = malvin.user?.id?.split(":")[0] || "";
-    const sender = m.sender || "";
-    return sender.includes(botNumber) || isAdmins;
-}
-
-// 🛑 BLOCK
 cmd({
     pattern: "block",
-    react: "🚫",
+    react: "⚠️",
     alias: ["banuser"],
     desc: "Block a user instantly.",
     category: "main",
     filename: __filename
-}, async (malvin, mek, m, { reply }) => {
+},
+async (malvin, mek, m, { quoted, reply, isOwner }) => {
     try {
-        if (!canUseCommand(m, malvin, false)) return reply("⚠️ Only bot or admins can use this command!");
-        if (!m.quoted) return reply("⚠️ Reply to the user you want to block!");
+        if (!isOwner) return reply("⚠️ Only the owner can use this command!");
+        if (!m.quoted) return reply("⚠️ Please reply to the user's message to block them!");
 
         const target = m.quoted.sender;
         await malvin.updateBlockStatus(target, "block");
-        return reply(`✅ Blocked: @${target.split('@')[0]}`);
+        return reply(`✅ Successfully blocked: @${target.split('@')[0]}`);
     } catch (e) {
         console.error("Block Error:", e);
-        reply(`❌ Error: ${e.message}`);
+        return reply(`❌ Failed to block the user. Error: ${e.message}`);
     }
 });
 
-// 👢 KICK
 cmd({
-    pattern: "kick",
-    react: "👢",
+    pattern: "kick1",
     alias: ["remove"],
-    desc: "Remove a replied user.",
+    react: "⚠️",
+    desc: "Remove a mentioned user from the group.",
     category: "main",
     filename: __filename
-}, async (malvin, mek, m, { from, isGroup, isAdmins, isBotAdmins, reply }) => {
+},
+async (malvin, mek, m, { from, isGroup, isAdmins, isBotAdmins, reply }) => {
     try {
-        if (!isGroup) return reply("⚠️ Group only!");
-        if (!canUseCommand(m, malvin, isAdmins)) return reply("⚠️ Only bot or admins can use this command!");
-        if (!isBotAdmins) return reply("⚠️ Bot must be admin!");
-        if (!m.quoted) return reply("⚠️ Reply to the user you want to kick!");
+        if (!isGroup) return reply("⚠️ This command can only be used in a group!");
+        if (!isAdmins) return reply("⚠️ Only group admins can use this command!");
+        if (!isBotAdmins) return reply("⚠️ I need to be an admin to execute this command!");
+        if (!m.quoted) return reply("⚠️ Please reply to the user's message you want to kick!");
 
         const target = m.quoted.sender;
+        const groupMetadata = await malvin.groupMetadata(from);
+        const groupAdmins = groupMetadata.participants.filter(p => p.admin).map(p => p.id);
+
+        if (groupAdmins.includes(target)) return reply("⚠️ I cannot remove another admin from the group!");
+
         await malvin.groupParticipantsUpdate(from, [target], "remove");
-        return reply(`✅ Kicked: @${target.split('@')[0]}`);
+        return reply(`✅ Successfully removed: @${target.split('@')[0]}`);
     } catch (e) {
         console.error("Kick Error:", e);
-        reply(`❌ Error: ${e.message}`);
+        reply(`❌ Failed to remove the user. Error: ${e.message}`);
     }
 });
 
-// 🧹 KICK ALL
 cmd({
-    pattern: "kickall",
-    react: "🧹",
-    desc: "Remove all non-admin members.",
+    pattern: "left1",
+    alias: ["leave", "exit"],
+    react: "⚠️",
+    desc: "Leave the current group.",
     category: "main",
     filename: __filename
-}, async (malvin, mek, m, { from, isGroup, isAdmins, isBotAdmins, reply }) => {
+},
+async (malvin, mek, m, { from, isGroup, isOwner, reply }) => {
     try {
-        if (!isGroup) return reply("⚠️ Group only!");
-        if (!canUseCommand(m, malvin, isAdmins)) return reply("⚠️ Only bot or admins can use this command!");
-        if (!isBotAdmins) return reply("⚠️ Bot must be admin!");
-
-        const groupMetadata = await malvin.groupMetadata(from);
-        const members = groupMetadata.participants;
-        const targets = members.filter(p => !p.admin).map(p => p.id);
-
-        for (let user of targets) {
-            await malvin.groupParticipantsUpdate(from, [user], "remove");
-        }
-        return reply("✅ All non-admin members removed.");
+        if (!isGroup) return reply("⚠️ This command can only be used in a group!");
+        if (!isOwner) return reply("⚠️ Only the owner can use this command!");
+        await malvin.groupLeave(from);
     } catch (e) {
-        console.error("KickAll Error:", e);
-        reply(`❌ Error: ${e.message}`);
+        console.error("Leave Error:", e);
+        reply(`❌ Failed to leave the group. Error: ${e.message}`);
     }
 });
 
-// 📢 TAG ALL
 cmd({
-    pattern: "tagall",
-    react: "📢",
-    desc: "Mention all members.",
+    pattern: "mute1",
+    alias: ["silence", "lock"],
+    react: "⚠️",
+    desc: "Set group chat to admin-only messages.",
     category: "main",
     filename: __filename
-}, async (malvin, mek, m, { from, isGroup, isAdmins, reply }) => {
+},
+async (malvin, mek, m, { from, isGroup, isAdmins, isBotAdmins, reply }) => {
     try {
-        if (!isGroup) return reply("⚠️ Group only!");
+        if (!isGroup) return reply("⚠️ This command can only be used in a group!");
+        if (!isAdmins) return reply("⚠️ This command is only for group admins!");
+        if (!isBotAdmins) return reply("⚠️ I need to be an admin to execute this command!");
 
-        const botNumber = malvin.user?.id?.split(":")[0] || "";
-        const sender = m.sender || "";
-        if (!(sender.includes(botNumber) || isAdmins)) return reply("⚠️ Only bot or admins can use this command!");
-
-        const groupMetadata = await malvin.groupMetadata(from);
-        const members = groupMetadata.participants;
-
-        let text = "📢 *Tagging all members:*\n\n";
-        members.forEach(u => text += `@${u.id.split("@")[0]} `);
-
-        return malvin.sendMessage(from, { text, mentions: members.map(u => u.id) });
+        await malvin.groupSettingUpdate(from, "announcement");
+        return reply("✅ Group has been muted. Only admins can send messages now!");
     } catch (e) {
-        console.error("TagAll Error:", e);
-        reply(`❌ Error: ${e.message}`);
+        console.error("Mute Error:", e);
+        reply(`❌ Failed to mute the group. Error: ${e.message}`);
+    }
+});
+
+cmd({
+    pattern: "unmute",
+    alias: ["unlock"],
+    react: "⚠️",
+    desc: "Allow everyone to send messages in the group.",
+    category: "main",
+    filename: __filename
+},
+async (malvin, mek, m, { from, isGroup, isAdmins, isBotAdmins, reply }) => {
+    try {
+        if (!isGroup) return reply("⚠️ This command can only be used in a group!");
+        if (!isAdmins) return reply("⚠️ This command is only for group admins!");
+        if (!isBotAdmins) return reply("⚠️ I need to be an admin to execute this command!");
+
+        await malvin.groupSettingUpdate(from, "not_announcement");
+        return reply("✅ Group has been unmuted. Everyone can send messages now!");
+    } catch (e) {
+        console.error("Unmute Error:", e);
+        reply(`❌ Failed to unmute the group. Error: ${e.message}`);
+    }
+});
+
+cmd({
+    pattern: "add",
+    alias: ["invite"],
+    react: "➕",
+    desc: "Add a user to the group.",
+    category: "main",
+    filename: __filename
+},
+async (malvin, mek, m, { from, isGroup, isAdmins, isBotAdmins, reply, args }) => {
+    try {
+        if (!isGroup) return reply("⚠️ This command can only be used in a group!");
+        if (!isAdmins) return reply("⚠️ Only group admins can use this command!");
+        if (!isBotAdmins) return reply("⚠️ I need to be an admin to execute this command!");
+        if (!args[0]) return reply("⚠️ Please provide the phone number of the user to add!");
+
+        const target = args[0].includes("@") ? args[0] : `${args[0]}@s.whatsapp.net`;
+        await malvin.groupParticipantsUpdate(from, [target], "add");
+        return reply(`✅ Successfully added: @${target.split('@')[0]}`);
+    } catch (e) {
+        console.error("Add Error:", e);
+        reply(`❌ Failed to add the user. Error: ${e.message}`);
+    }
+});
+
+cmd({
+    pattern: "demote1",
+    alias: ["member"],
+    react: "⚠️",
+    desc: "Remove admin privileges from a mentioned user.",
+    category: "main",
+    filename: __filename
+},
+async (malvin, mek, m, { from, isGroup, isAdmins, isBotAdmins, reply }) => {
+    try {
+        if (!isGroup) return reply("⚠️ This command can only be used in a group!");
+        if (!isAdmins) return reply("⚠️ Only group admins can use this command!");
+        if (!isBotAdmins) return reply("⚠️ I need to be an admin to execute this command!");
+        if (!m.quoted) return reply("⚠️ Please reply to the user's message you want to remove admin privileges from!");
+
+        const target = m.quoted.sender;
+        if (target === m.sender) return reply("⚠️ You cannot remove your own admin privileges!");
+
+        await malvin.groupParticipantsUpdate(from, [target], "demote");
+        return reply(`✅ Successfully removed admin privileges from: @${target.split('@')[0]}`);
+    } catch (e) {
+        console.error("Demote Error:", e);
+        reply(`❌ Failed to remove admin privileges. Error: ${e.message}`);
+    }
+});
+
+cmd({
+    pattern: "promote1",
+    alias: ["admin", "makeadmin"],
+    react: "⚡",
+    desc: "Grant admin privileges to a mentioned user.",
+    category: "main",
+    filename: __filename
+},
+async (malvin, mek, m, { from, isGroup, isAdmins, isBotAdmins, reply }) => {
+    try {
+        if (!isGroup) return reply("⚠️ This command can only be used in a group!");
+        if (!isAdmins) return reply("⚠️ Only group admins can use this command!");
+        if (!isBotAdmins) return reply("⚠️ I need to be an admin to execute this command!");
+        if (!m.quoted) return reply("⚠️ Please reply to the user's message you want to promote to admin!");
+
+        const target = m.quoted.sender;
+        const groupMetadata = await malvin.groupMetadata(from);
+        const groupAdmins = groupMetadata.participants.filter(p => p.admin).map(p => p.id);
+
+        if (groupAdmins.includes(target)) return reply("⚠️ The mentioned user is already an admin!");
+
+        await malvin.groupParticipantsUpdate(from, [target], "promote");
+        return reply(`✅ Successfully promoted @${target.split('@')[0]} to admin!`);
+    } catch (e) {
+        console.error("Promote Error:", e);
+        reply(`❌ Failed to promote the user. Error: ${e.message}`);
+    }
+});        reply(`❌ Error: ${e.message}`);
     }
 });
 
