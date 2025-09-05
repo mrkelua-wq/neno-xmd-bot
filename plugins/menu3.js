@@ -5,9 +5,9 @@ const moment = require('moment');
 
 cmd(
   {
-    pattern: "menu3",
+    pattern: "menu",
     alias: ["getmenu"],
-    react: "💞",
+    react: "😏",
     desc: "Interactive menu with buttons",
     category: "main",
     filename: __filename,
@@ -20,7 +20,7 @@ cmd(
       const usedRam = (process.memoryUsage().rss / 1024 / 1024).toFixed(2) + " MB";
       const totalRam = (os.totalmem() / 1024 / 1024 / 1024).toFixed(2) + " GB";
 
-      // Message text
+      // Menu message text
       let teks = `
 𝐘𝐨𝐨  ${user}
 *⟦✦⟧  Wᴇʟᴄᴏᴍᴇ Tᴏ 𝗡𝗘𝗢𝗡 𝗫𝗠𝗗  ⟦✦⟧*
@@ -37,7 +37,7 @@ cmd(
 ⟦⚡⟧  *POWERED BY 𝗡𝗜𝗠𝗘𝗦𝗛𝗞𝗔 𝗠𝗜𝗛𝗜𝗥𝗔𝗡*  ⟦⚡⟧*
 `;
 
-      // List message
+      // Sections & rows for interactive list
       const listMessage = {
         text: teks,
         footer: 'Click a button to see commands!',
@@ -71,13 +71,69 @@ cmd(
               { title: '.join', rowId: '.join' },
               { title: '.add', rowId: '.add' },
               { title: '.kick', rowId: '.kick' },
-              { title: '.shutdown', rowId: '.shutdown' }
+              { title: '.left', rowId: '.left' },
+              { title: '.mute', rowId: '.mute' },
+              { title: '.unmute', rowId: '.unmute' },
+              { title: '.demote', rowId: '.demote' },
+              { title: '.promote', rowId: '.promote' },
+              { title: '.shutdown', rowId: '.shutdown' },
+              { title: '.broadcast', rowId: '.broadcast' },
+              { title: '.clearchats', rowId: '.clearchats' },
+              { title: '.getdp', rowId: '.getdp' },
+              { title: '.update', rowId: '.update' },
+              { title: '.settings', rowId: '.settings' },
+              { title: '.groupinfo', rowId: '.groupinfo' },
+              { title: '.gmdp', rowId: '.gmdp' }
+            ]
+          },
+          {
+            title: 'Fun Commands',
+            rows: [
+              { title: '.joke', rowId: '.joke' },
+              { title: '.fact', rowId: '.fact' },
+              { title: '.flirt', rowId: '.flirt' },
+              { title: '.truth', rowId: '.truth' },
+              { title: '.dare', rowId: '.dare' },
+              { title: '.pickupline', rowId: '.pickupline' },
+              { title: '.char', rowId: '.char' },
+              { title: '.spam', rowId: '.spam' },
+              { title: '.rm', rowId: '.rm' }
+            ]
+          },
+          {
+            title: 'Anime Commands',
+            rows: [
+              { title: '.loli', rowId: '.loli' },
+              { title: '.anime', rowId: '.anime' },
+              { title: '.animegirl', rowId: '.animegirl' }
+            ]
+          },
+          {
+            title: 'Other Commands',
+            rows: [
+              { title: '.play2', rowId: '.play2' },
+              { title: '.drama', rowId: '.drama' },
+              { title: '.movie', rowId: '.movie' },
+              { title: '.dog', rowId: '.dog' },
+              { title: '.save', rowId: '.save' }
+            ]
+          },
+          {
+            title: 'Convert & AI Commands',
+            rows: [
+              { title: '.sticker <reply img>', rowId: '.sticker' },
+              { title: '.img <reply sticker>', rowId: '.img' },
+              { title: '.tr <lang> <text>', rowId: '.tr' },
+              { title: '.tts <text>', rowId: '.tts' },
+              { title: '.fluxai <prompt>', rowId: '.fluxai' },
+              { title: '.gf <ask>', rowId: '.gf' }
             ]
           }
         ],
         jpegThumbnail: await (await fetch(thumb)).arrayBuffer()
       };
 
+      // Send interactive list menu
       await malvin.sendMessage(from, listMessage, { quoted: mek });
 
     } catch (e) {
