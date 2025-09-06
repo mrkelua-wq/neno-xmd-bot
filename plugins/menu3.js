@@ -1,12 +1,13 @@
-// plugins/menu.js
+// plugins/menu2.js
 const { cmd } = require("../command");
 
 let sessions = {}; // track user sessions
 
+// MAIN MENU COMMAND
 cmd(
   {
     pattern: "menu2",
-    desc: "Main Menu",
+    desc: "Main Menu with react",
     category: "main",
     filename: __filename,
   },
@@ -23,7 +24,7 @@ cmd(
 ║ 3️⃣ OWNER COMMANDS
 ║ 4️⃣ FUN COMMANDS
 ║ 5️⃣ ANIME COMMANDS
-║ 6️⃣ OUTHER COMMANDS
+║ 6️⃣ OTHER COMMANDS
 ║ 7️⃣ CONVERT COMMANDS
 ║ 8️⃣ IMAGE COMMAND
 ║ 9️⃣ AI GIRLFRIEND
@@ -33,19 +34,21 @@ cmd(
 👉 Reply with number (1-10) to view that sub-menu
 `;
 
+      // send menu with react
       let sent = await conn.sendMessage(mek.chat, {
         text: menuText,
+        react: { text: "♻️", key: mek.key }, // react on sending
       });
 
-      // save session
+      // save session for reply tracking
       sessions[mek.sender] = sent.key.id;
     } catch (e) {
-      console.log(e);
+      console.log("Menu2 error:", e);
     }
   }
 );
 
-// reply handler
+// SUB MENU HANDLER
 cmd(
   {
     on: "text",
@@ -55,10 +58,10 @@ cmd(
       if (!m.body) return;
       let reply = m.body.trim();
 
-      // user had session?
+      // check if user has session
       if (!sessions[mek.sender]) return;
 
-      // must be reply to menu msg
+      // check if reply is to the menu message
       if (!mek.quoted || mek.quoted.id !== sessions[mek.sender]) return;
 
       let subMenu = "";
@@ -128,7 +131,7 @@ cmd(
           break;
         case "6":
           subMenu = `
-╔═══《 ❤️‍🔥 OUTHER COMMANDS 》═══╗
+╔═══《 ❤️‍🔥 OTHER COMMANDS 》═══╗
 ◈ .play2
 ◈ .drama
 ◈ .movie 
@@ -164,22 +167,17 @@ cmd(
 ╚══════════════════════════╝`;
           break;
         default:
-          subMenu = "❌ Invalid number. Please reply 1-10.";
+          subMenu = "❌ Invalid number. Reply 1-10.";
       }
 
-      await conn.sendMessage(mek.chat, { text: subMenu }, { quoted: mek });
-    } catch (e) {
-      console.log("Menu reply error: ", e);
-    }
-  }
-);`;
-    }
-
-    if (subMenu) {
+      // send sub-menu with react
       await conn.sendMessage(mek.chat, {
-        image: { url: "https://files.catbox.moe/0mf3hg.webp" },
-        caption: subMenu,
-      });
+        text: subMenu,
+        react: { text: "✅", key: mek.key },
+      }, { quoted: mek });
+
+    } catch (e) {
+      console.log("Menu2 reply error:", e);
     }
   }
 );
