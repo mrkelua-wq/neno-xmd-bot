@@ -17,10 +17,10 @@ try {
   const baileys = require("@adiwajshing/baileys");
   baileysDownloadFn = baileys.downloadContentFromMessage;
 } catch (e) {
-  // not installed - we'll try to use client provided helpers instead
+  // not installed - fallback will be used
 }
 
-// Config - change to suit your project
+// Config
 const DOWNLOAD_DIR = path.join(__dirname, "..", "downloaded_media");
 const META_FILE = path.join(DOWNLOAD_DIR, "media_metadata.json");
 
@@ -83,7 +83,7 @@ cmd(
         }
       }
 
-      // Case B: viewOnce wrapper
+      // Case B: handle viewOnceMessage wrapper
       if (!buffer) {
         const raw = quoted.message || quoted;
 
@@ -147,7 +147,7 @@ cmd(
               }
             }
 
-            // Strategy 3: direct url
+            // Strategy 3: direct URL
             if (!buffer && mediaNode.url) {
               try {
                 const fetchFn = malvin.fetch || global.fetch;
@@ -163,7 +163,7 @@ cmd(
             // Strategy 4: whatsapp-web.js style
             if (!buffer && typeof quoted.downloadMedia === "function") {
               try {
-                const media = await quoted.downloadMedia();
+                const media = await quoted.downloadMedia(); // { data: base64, mimetype }
                 if (media && media.data) {
                   buffer = Buffer.from(media.data, "base64");
                   mimetype = mimetype || media.mimetype;
@@ -196,10 +196,10 @@ cmd(
       const filename = `${safeFrom}_${timestamp}${postfix}.${fileExt}`;
       const filepath = path.join(DOWNLOAD_DIR, filename);
 
-      // save buffer
+      // Save buffer to file
       fs.writeFileSync(filepath, buffer);
 
-      // save metadata
+      // Save metadata
       const meta = {
         saved_at: new Date().toISOString(),
         chat: chatId,
@@ -213,12 +213,13 @@ cmd(
       };
       saveMetadata(meta);
 
-      // confirm + resend media
+      // Confirm + resend media
       const caption = `🔓 Unlocked & saved${
         isViewOnce ? " (view-once)" : ""
       }\nFile: ${filename}`;
 
       const sendOpts = { quoted: mek };
+
       if (mimetype && mimetype.startsWith("image/")) {
         await malvin.sendMessage(
           chatId,
