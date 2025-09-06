@@ -3,7 +3,7 @@ const { cmd } = require("../command");
 
 cmd(
   {
-    pattern: "menu",
+    pattern: "menu2",
     desc: "Main Menu",
     category: "main",
     filename: __filename,
