@@ -1,22 +1,29 @@
 // plugins/menu2.js
 const { cmd } = require("../command");
 
-let sessions = {}; // track user sessions
+let sessions = {}; // track menu sessions
 
-// MAIN MENU COMMAND
-cmd(
-  {
-    pattern: "menu2",
-    desc: "Main Menu with react",
-    category: "main",
-    filename: __filename,
-  },
-  async (conn, mek, m, { pushname }) => {
-    try {
-      let user = pushname || mek.sender.split("@")[0];
-      let menuText = `
-𝐘𝐨𝐨 ${user}
-*⟦✦⟧  Wᴇʟᴄᴏᴍᴇ Tᴏ 𝗡𝗘𝗢𝗡 𝗫𝗠𝗗  ⟦✦⟧*
+const menuImageUrl = "https://files.catbox.moe/l0ixpu.jpg";
+
+// Sub-menu images (ඔයාට වෙනත් images දාන්න පුළුවන්)
+const subMenuImages = {
+  "1": "https://files.catbox.moe/submenu1.jpg",
+  "2": "https://files.catbox.moe/submenu2.jpg",
+  "3": "https://files.catbox.moe/submenu3.jpg",
+  "4": "https://files.catbox.moe/submenu4.jpg",
+  "5": "https://files.catbox.moe/submenu5.jpg",
+  "6": "https://files.catbox.moe/submenu6.jpg",
+  "7": "https://files.catbox.moe/submenu7.jpg",
+  "8": "https://files.catbox.moe/submenu8.jpg",
+  "9": "https://files.catbox.moe/submenu9.jpg",
+  "10": "https://files.catbox.moe/submenu10.jpg",
+};
+
+const getMenuText = (user) => `
+╔════════════════════╗
+║ 𝐘𝐨𝐨  ${user}
+║ Wᴇʟᴄᴏᴍᴇ Tᴏ 𝗡𝗘𝗢𝗡 𝗫𝗠𝗗
+╚════════════════════╝
 
 ╔═══《 📜 MENU CATEGORIES 》═══╗
 ║ 1️⃣ MAIN COMMANDS
@@ -31,153 +38,146 @@ cmd(
 ║ 🔟 STATUS SAVE
 ╚════════════════════════════╝
 
-👉 Reply with number (1-10) to view that sub-menu
+👉 Reply with number (1-10) to view sub-menu
 `;
 
-      // send menu with react
-      let sent = await conn.sendMessage(mek.chat, {
-        text: menuText,
-        react: { text: "♻️", key: mek.key }, // react on sending
+// Sub-menu texts
+const subMenuTexts = {
+  "1": `
+╔════════《 ⚙️ MAIN COMMANDS 》════════╗
+┃ ✧ .alive
+┃ ✧ .menu
+┃ ✧ .ai <text>
+┃ ✧ .dev
+┃ ► .about
+╚═════════════════════════════════════╝`,
+  "2": `
+╔════════《 📥 DOWNLOAD COMMANDS 》════════╗
+┃ ✧ .song <text>
+┃ ✧ .video <text>
+┃ ✧ .fb <link>
+┃ ✧ .tiktok <link>
+┃ ◈ .dvideo <url>
+╚═════════════════════════════════════════╝`,
+  "3": `
+╔════════《 👑 OWNER COMMANDS 》════════╗
+┃ ✧ .block
+┃ ✧ .join
+┃ ✧ .add
+┃ ✧ .kick
+┃ ✧ .left
+┃ ✧ .mute / .unmute
+┃ ✧ .promote / .demote
+┃ ◈ .shutdown
+┃ ◈ .jid / .gjid
+┃ ◈ .broadcast
+┃ ◈ .clearchats
+┃ ◆ .getdp
+┃ ◈ .update
+┃ ◈ .settings
+┃ ◈ .groupinfo
+┃ ◈ .gmdp
+╚══════════════════════════════════════╝`,
+  "4": `
+╔════════《 🤣 FUN COMMANDS 》════════╗
+┃ ✧ .joke
+┃ ✧ .fact
+┃ ✧ .flirt
+┃ ✧ .truth
+┃ ✧ .dare
+┃ ✧ .pickupline
+┃ ✧ .char
+┃ ✧ .spam
+┃ ✧ .rm
+╚═════════════════════════════════╝`,
+  "5": `
+╔════════《 🩵 ANIME COMMANDS 》════════╗
+┃ ◈ .loli
+┃ ◈ .anime
+┃ ◈ .animegirl
+╚══════════════════════════════════╝`,
+  "6": `
+╔════════《 ❤️‍🔥 OTHER COMMANDS 》════════╗
+┃ ◈ .play2
+┃ ◈ .drama
+┃ ◈ .movie
+┃ ◈ .dog
+┃ ◆ .save
+╚═════════════════════════════════════╝`,
+  "7": `
+╔════════《 🔁 CONVERT COMMANDS 》════════╗
+┃ ✧ .sticker <reply img>
+┃ ✧ .img <reply sticker>
+┃ ✧ .tr <lang> <text>
+┃ ✧ .tts <text>
+╚═════════════════════════════════════╝`,
+  "8": `
+╔════════《 💖 IMAGE COMMAND 》════════╗
+┃ ◈ .fluxai <prompt>
+╚═════════════════════════════════╝`,
+  "9": `
+╔════════《 💞 AI GIRLFRIEND 》════════╗
+┃ ◈ .gf <ask anything>
+╚═════════════════════════════════╝`,
+  "10": `
+╔════════《 ☠️ STATUS SAVE 》════════╗
+┃ [Reply to status with "status save"]
+╚═════════════════════════════════╝`,
+};
+
+// Send main menu
+cmd(
+  {
+    pattern: "menu2",
+    desc: "Menu with image, react & sub-menu image",
+    category: "main",
+    filename: __filename,
+  },
+  async (conn, mek, m, { pushname }) => {
+    try {
+      const user = pushname || mek.sender.split("@")[0];
+
+      const sent = await conn.sendMessage(mek.chat, {
+        image: { url: menuImageUrl },
+        caption: getMenuText(user),
       });
 
-      // save session for reply tracking
-      sessions[mek.sender] = sent.key.id;
-    } catch (e) {
-      console.log("Menu2 error:", e);
+      // react to image
+      await conn.sendMessage(mek.chat, {
+        react: { text: "♻️", key: sent.key },
+      });
+
+      sessions[mek.sender] = true; // track session
+    } catch (err) {
+      console.log("Menu2 send error:", err);
     }
   }
 );
 
-// SUB MENU HANDLER
+// Handle number replies
 cmd(
-  {
-    on: "text",
-  },
-  async (conn, mek, m) => {
+  { on: "text" },
+  async (conn, mek) => {
     try {
-      if (!m.body) return;
-      let reply = m.body.trim();
-
-      // check if user has session
       if (!sessions[mek.sender]) return;
+      const reply = mek.body.trim();
 
-      // check if reply is to the menu message
-      if (!mek.quoted || mek.quoted.id !== sessions[mek.sender]) return;
-
-      let subMenu = "";
-      switch (reply) {
-        case "1":
-          subMenu = `
-╔═══《 ⚙️ MAIN COMMANDS 》═══╗
-✧ .alive
-✧ .menu
-✧ .ai <text>
-✧ .dev
-► .about
-╚═══════════════════════════╝`;
-          break;
-        case "2":
-          subMenu = `
-╔═══《 📥 DOWNLOAD COMMANDS 》═══╗
-✧ .song <text>
-✧ .video <text>
-✧ .fb <link>
-✧ .tiktok <link>
-✧ .dvideo <url>
-╚════════════════════════════╝`;
-          break;
-        case "3":
-          subMenu = `
-╔═══《 👑 OWNER COMMANDS 》═══╗
-✧ .block
-✧ .join
-✧ .add
-✧ .kick
-✧ .left
-✧ .mute / .unmute
-✧ .promote / .demote
-✧ .shutdown
-✧ .jid / .gjid
-✧ .broadcast
-✧ .clearchats
-✧ .getdp
-✧ .update
-✧ .settings
-✧ .groupinfo
-✧ .gmdp
-╚════════════════════════════╝`;
-          break;
-        case "4":
-          subMenu = `
-╔═══《 🤣 FUN COMMANDS 》═══╗
-✧ .joke
-✧ .fact
-✧ .flirt
-✧ .truth
-✧ .dare
-✧ .pickupline
-✧ .char
-✧ .spam
-✧ .rm
-╚═══════════════════════════╝`;
-          break;
-        case "5":
-          subMenu = `
-╔═══《 🩵 ANIME COMMANDS 》═══╗
-◈ .loli
-◈ .anime
-◈ .animegirl
-╚════════════════════════════╝`;
-          break;
-        case "6":
-          subMenu = `
-╔═══《 ❤️‍🔥 OTHER COMMANDS 》═══╗
-◈ .play2
-◈ .drama
-◈ .movie 
-◈ .dog
-◈ .save 
-╚════════════════════════════╝`;
-          break;
-        case "7":
-          subMenu = `
-╔═══《 🔁 CONVERT COMMANDS 》═══╗
-✧ .sticker <reply img>
-✧ .img <reply sticker>
-✧ .tr <lang> <text>
-✧ .tts <text>
-╚════════════════════════════╝`;
-          break;
-        case "8":
-          subMenu = `
-╔═══《 💖 IMAGE COMMAND 》═══╗
-◈ .fluxai <prompt>
-╚════════════════════════════╝`;
-          break;
-        case "9":
-          subMenu = `
-╔═══《 💞 AI GIRLFRIEND 》═══╗
-◈ .gf <ask anything>
-╚════════════════════════════╝`;
-          break;
-        case "10":
-          subMenu = `
-╔═══《 ☠️ STATUS SAVE 》═══╗
-[Reply to status with "status save"]
-╚══════════════════════════╝`;
-          break;
-        default:
-          subMenu = "❌ Invalid number. Reply 1-10.";
+      if (!subMenuTexts[reply]) {
+        return await conn.sendMessage(mek.chat, { text: "❌ Invalid number. Type 1-10 only." });
       }
 
-      // send sub-menu with react
+      // send sub-menu image + text
       await conn.sendMessage(mek.chat, {
-        text: subMenu,
-        react: { text: "✅", key: mek.key },
-      }, { quoted: mek });
+        image: { url: subMenuImages[reply] || menuImageUrl }, // default image if not set
+        caption: subMenuTexts[reply],
+      });
 
-    } catch (e) {
-      console.log("Menu2 reply error:", e);
+      // react to sub-menu image
+      await conn.sendMessage(mek.chat, {
+        react: { text: "✅", key: mek.key },
+      });
+    } catch (err) {
+      console.log("Sub-menu error:", err);
     }
   }
 );
