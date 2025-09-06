@@ -1,6 +1,8 @@
 // plugins/menu.js
 const { cmd } = require("../command");
 
+let sessions = {}; // track user sessions
+
 cmd(
   {
     pattern: "menu2",
@@ -8,74 +10,81 @@ cmd(
     category: "main",
     filename: __filename,
   },
-  async (conn, mek) => {
-    let menuText = `
+  async (conn, mek, m, { pushname }) => {
+    try {
+      let user = pushname || mek.sender.split("@")[0];
+      let menuText = `
+𝐘𝐨𝐨 ${user}
 *⟦✦⟧  Wᴇʟᴄᴏᴍᴇ Tᴏ 𝗡𝗘𝗢𝗡 𝗫𝗠𝗗  ⟦✦⟧*
 
-╔═══《 🛠 STATUS DETAILS 》═══╗
-║ ⚡  *Bot*     : 𝗡𝗘𝗢𝗡 𝗫𝗠𝗗
-║ 👤  *User*    : ${mek.pushName}
-║ 📱  *Owner*   : NIMESHKA
-║ ⏳  *Uptime*  : ${process.uptime().toFixed(0)}s
-║ 💽  *RAM*     : ${(process.memoryUsage().rss / 1024 / 1024).toFixed(2)} MB
-║ 🔹  *Prefix*  : .
-╚════════════════════════════╝
-
 ╔═══《 📜 MENU CATEGORIES 》═══╗
-║ 1️⃣  MAIN COMMANDS
-║ 2️⃣  DOWNLOAD COMMANDS
-║ 3️⃣  OWNER COMMANDS
-║ 4️⃣  FUN COMMANDS
-║ 5️⃣  ANIME COMMANDS
-║ 6️⃣  OUTHER COMMANDS
-║ 7️⃣  CONVERT COMMANDS
-║ 8️⃣  IMAGE COMMAND
-║ 9️⃣  AI GIRLFRIEND
-║ 🔟  STATUS SAVE
+║ 1️⃣ MAIN COMMANDS
+║ 2️⃣ DOWNLOAD COMMANDS
+║ 3️⃣ OWNER COMMANDS
+║ 4️⃣ FUN COMMANDS
+║ 5️⃣ ANIME COMMANDS
+║ 6️⃣ OUTHER COMMANDS
+║ 7️⃣ CONVERT COMMANDS
+║ 8️⃣ IMAGE COMMAND
+║ 9️⃣ AI GIRLFRIEND
+║ 🔟 STATUS SAVE
 ╚════════════════════════════╝
 
-⟦⚡⟧  *Reply with number to view sub-menu*  ⟦⚡⟧
-    `;
+👉 Reply with number (1-10) to view that sub-menu
+`;
 
-    await conn.sendMessage(mek.chat, {
-      image: { url: "https://files.catbox.moe/0mf3hg.webp" },
-      caption: menuText,
-    });
+      let sent = await conn.sendMessage(mek.chat, {
+        text: menuText,
+      });
+
+      // save session
+      sessions[mek.sender] = sent.key.id;
+    } catch (e) {
+      console.log(e);
+    }
   }
 );
 
-// Handle replies for sub-menus
+// reply handler
 cmd(
   {
     on: "text",
   },
   async (conn, mek, m) => {
-    if (!m.body) return;
-    let reply = m.body.trim();
+    try {
+      if (!m.body) return;
+      let reply = m.body.trim();
 
-    let subMenu = "";
-    if (reply === "1") {
-      subMenu = `
+      // user had session?
+      if (!sessions[mek.sender]) return;
+
+      // must be reply to menu msg
+      if (!mek.quoted || mek.quoted.id !== sessions[mek.sender]) return;
+
+      let subMenu = "";
+      switch (reply) {
+        case "1":
+          subMenu = `
 ╔═══《 ⚙️ MAIN COMMANDS 》═══╗
 ✧ .alive
 ✧ .menu
 ✧ .ai <text>
 ✧ .dev
 ► .about
-╚═══════════════════════════╝
-`;
-    } else if (reply === "2") {
-      subMenu = `
+╚═══════════════════════════╝`;
+          break;
+        case "2":
+          subMenu = `
 ╔═══《 📥 DOWNLOAD COMMANDS 》═══╗
 ✧ .song <text>
 ✧ .video <text>
 ✧ .fb <link>
 ✧ .tiktok <link>
-◈ .dvideo <url>
-╚══════════════════════════════╝
-`;
-    } else if (reply === "3") {
-      subMenu = `
+✧ .dvideo <url>
+╚════════════════════════════╝`;
+          break;
+        case "3":
+          subMenu = `
 ╔═══《 👑 OWNER COMMANDS 》═══╗
 ✧ .block
 ✧ .join
@@ -84,19 +93,19 @@ cmd(
 ✧ .left
 ✧ .mute / .unmute
 ✧ .promote / .demote
-◈ .shutdown
-◈ .gjid / .jid
-◈ .broadcast
-◈ .clearchats
-◆ .getdp
-◈ .update
-◈ .settings
-◈ .groupinfo
-◈ .gmdp
-╚═════════════════════════════╝
-`;
-    } else if (reply === "4") {
-      subMenu = `
+✧ .shutdown
+✧ .jid / .gjid
+✧ .broadcast
+✧ .clearchats
+✧ .getdp
+✧ .update
+✧ .settings
+✧ .groupinfo
+✧ .gmdp
+╚════════════════════════════╝`;
+          break;
+        case "4":
+          subMenu = `
 ╔═══《 🤣 FUN COMMANDS 》═══╗
 ✧ .joke
 ✧ .fact
@@ -107,53 +116,63 @@ cmd(
 ✧ .char
 ✧ .spam
 ✧ .rm
-╚════════════════════════════╝
-`;
-    } else if (reply === "5") {
-      subMenu = `
+╚═══════════════════════════╝`;
+          break;
+        case "5":
+          subMenu = `
 ╔═══《 🩵 ANIME COMMANDS 》═══╗
 ◈ .loli
 ◈ .anime
 ◈ .animegirl
-╚═════════════════════════════╝
-`;
-    } else if (reply === "6") {
-      subMenu = `
+╚════════════════════════════╝`;
+          break;
+        case "6":
+          subMenu = `
 ╔═══《 ❤️‍🔥 OUTHER COMMANDS 》═══╗
 ◈ .play2
 ◈ .drama
-◈ .movie
+◈ .movie 
 ◈ .dog
-◆ .save
-╚═════════════════════════════╝
-`;
-    } else if (reply === "7") {
-      subMenu = `
+◈ .save 
+╚════════════════════════════╝`;
+          break;
+        case "7":
+          subMenu = `
 ╔═══《 🔁 CONVERT COMMANDS 》═══╗
 ✧ .sticker <reply img>
 ✧ .img <reply sticker>
 ✧ .tr <lang> <text>
 ✧ .tts <text>
-╚═════════════════════════════╝
-`;
-    } else if (reply === "8") {
-      subMenu = `
+╚════════════════════════════╝`;
+          break;
+        case "8":
+          subMenu = `
 ╔═══《 💖 IMAGE COMMAND 》═══╗
 ◈ .fluxai <prompt>
-╚════════════════════════════╝
-`;
-    } else if (reply === "9") {
-      subMenu = `
+╚════════════════════════════╝`;
+          break;
+        case "9":
+          subMenu = `
 ╔═══《 💞 AI GIRLFRIEND 》═══╗
-◈ .gf <what you ask>
-╚════════════════════════════╝
-`;
-    } else if (reply === "10" || reply === "🔟") {
-      subMenu = `
-╔═══《 ☠️ STATUS SAVE COMMAND 》═══╗
-[reply save with statuse save text]
-╚════════════════════════════════╝
-`;
+◈ .gf <ask anything>
+╚════════════════════════════╝`;
+          break;
+        case "10":
+          subMenu = `
+╔═══《 ☠️ STATUS SAVE 》═══╗
+[Reply to status with "status save"]
+╚══════════════════════════╝`;
+          break;
+        default:
+          subMenu = "❌ Invalid number. Please reply 1-10.";
+      }
+
+      await conn.sendMessage(mek.chat, { text: subMenu }, { quoted: mek });
+    } catch (e) {
+      console.log("Menu reply error: ", e);
+    }
+  }
+);`;
     }
 
     if (subMenu) {
