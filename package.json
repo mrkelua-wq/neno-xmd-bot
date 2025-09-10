@@ -34,7 +34,7 @@
   "axios": "^1.11.0",
   "mumaker": "^2.0.0",
   "buffer": "^6.0.3",
-  "@dark-yasiya/news-scrap": "^1.0.6"
+  "@dark-yasiya/news-scrap": "^2.0.1"
   
    
  
