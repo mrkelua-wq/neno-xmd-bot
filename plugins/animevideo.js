@@ -1,59 +1,60 @@
-// animevideo.js
-const { cmd } = require("../command");
-const cheerio = require("cheerio");
 const fetch = require("node-fetch");
+const cheerio = require("cheerio");
+const { cmd } = require("../command"); // oyage botge command handler eka
 
 async function animeVideo2() {
-  const url = 'https://mobstatus.com/anime-whatsapp-status-video/'; 
+  const url = "https://mobstatus.com/anime-whatsapp-status-video/";
   const response = await fetch(url);
   const html = await response.text();
   const $ = cheerio.load(html);
 
   const videos = [];
-  const title = $('strong').first().text() || "Anime Video";
+  const title = $("strong").text();
 
-  $('a.mb-button.mb-style-glass.mb-size-tiny.mb-corners-pill.mb-text-style-heavy').each((index, element) => {
-    const href = $(element).attr('href');
-    if (href) {
-      videos.push({
-        title,
-        source: href
-      });
-    }
+  $("a.mb-button.mb-style-glass.mb-size-tiny.mb-corners-pill.mb-text-style-heavy").each((index, element) => {
+    const href = $(element).attr("href");
+    videos.push({
+      title,
+      source: href,
+    });
   });
 
-  if (!videos.length) return null;
+  if (videos.length === 0) {
+    return null;
+  }
 
   const randomIndex = Math.floor(Math.random() * videos.length);
   return videos[randomIndex];
 }
 
+// === Command Bind Karanna ===
 cmd(
   {
     pattern: "animevideo",
-    react: "🎬",
-    desc: "Get a random anime WhatsApp status video",
+    react: "🎥",
+    desc: "Send random anime status video",
     category: "fun",
     filename: __filename,
     fromMe: false,
   },
-  async (malvin, mek, m, { reply }) => {
+  async (conn, mek, m, { reply }) => {
     try {
-      await malvin.sendPresenceUpdate("composing", mek.key.remoteJid);
-
       const video = await animeVideo2();
-      if (!video) return reply("⚠️ No anime video found. Try again later!");
 
-      await malvin.sendMessage(
+      if (!video) {
+        return reply("❌ Sorry, no anime videos found.");
+      }
+
+      await conn.sendMessage(
         mek.key.remoteJid,
         {
           video: { url: video.source },
-          caption: `🎬 *${video.title}*\n\n𝗣𝗼𝘄𝗲𝗿𝗲𝗱 𝗯𝘆 𝗡𝗲𝗻𝗼 𝗫𝗠𝗗`
+          caption: `🎬 Random Anime Video\n\n📌 ${video.title}`,
         },
         { quoted: mek }
       );
-    } catch (e) {
-      console.error("❌ Error in animevideo command:", e);
+    } catch (err) {
+      console.error(err);
       reply("⚠️ Error fetching anime video.");
     }
   }
